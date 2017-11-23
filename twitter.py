@@ -49,6 +49,8 @@ def find_tweets(searchterm):
 def update_status(status):
     api.update_status(str(status))
 def check_duplicate(messageid):
+    if messageid is None:
+        return False
     db_user,db_pass = get_db_creds('db_creds.txt')
     con = mdb.connect('localhost', db_user,db_pass,'twitterbot')
     cur = con.cursor()
@@ -65,28 +67,39 @@ api = tweepy.API(auth)
 
 #Search for GSD mentions
 #results = find_tweets('German Shepherd')
-results = find_tweets('lost dog')
+results = find_tweets('lostdog')
 
 #Process Tweets
 for i in results:
 
     print "Message id: ", i
     #print "Author: ", results[i][0]
-    #print "Original Author: ",results[i][2]
-    #print "Original Message ID: " ,results[i][3]
+    print "Original Author: ",results[i][2]
+    print "Original Message ID: " ,results[i][3]
     print "Text: ", results[i][1]
     messageid = i
     tweet_author = results[i][0]
     tweet_message = results[i][1]
     original_tweet_author = results[i][2]
     original_messageid = results[i][3]
-    #Check if duplicate
+    #Check if duplicat of new message
     if check_duplicate(messageid):
         print "It is a duplicate....I am SKIPPING"
         continue
     #Check if lost dog
-    elif 'lost dog' in tweet_message:
-       print "This is a tweet of a lost dog"
+    elif 'lost dog' or 'Lost Dog' or 'lostdog' or 'LostDog' in tweet_message:       
+        print "This is a tweet of a lost dog"
+        print "I am going to retweet this."
+        #check if we have already retweeted this original tweet
+        if check_duplicate(original_messageid):
+            print "We already handled this shit"
+            continue 
+        elif original_tweet_author is None:
+            print "Hey peeps.  Keep a lookout for %s's lost dog" %tweet_author
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
+        else:
+            print "Hey peeps.  Keep a lookout for %s's lost dog" %original_tweet_author
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
    #Check if retweet
     elif original_tweet_author is not None and original_messageid is not None:
         print "This is a retweet"

@@ -54,24 +54,32 @@ def check_duplicate(messageid):
     db_user,db_pass = get_db_creds('db_creds.txt')
     con = mdb.connect('localhost', db_user,db_pass,'twitterbot')
     cur = con.cursor()
-    cur.execute("select messageid from tweets where messageid = %s" %messageid)
+    cur.execute("select * from tweets where messageid = %s or original_messageid = %s" %(messageid,messageid))
     results = cur.fetchone()
     if results:
         return True
     else:
         return False
-
+def retweet(original_tweet_author,originalid,dbmessageid):
+    db_user,db_pass = get_db_creds('db_creds.txt')
+    con = mdb.connect('localhost', db_user,db_pass,'twitterbot')
+    cur = con.cursor()
+    cur.execute("select tweet_message from messages where id = %s" %dbmessageid)
+    message = cur.fetchone()[0]
+    url = 'https://twitter.com/%s/status/%s' %(original_tweet_author,originalid)
+    print '@%s %s  %s' %(original_tweet_author,message,url)
+    update_status('@%s %s  %s' %(original_tweet_author,message,url))
 #Login to Twitter Account
 auth = get_twitter_creds('twitter_creds.txt')
 api = tweepy.API(auth)
 
 #Search for GSD mentions
-#results = find_tweets('German Shepherd')
-results = find_tweets('lostdog')
+results = find_tweets('German Shepherd')
+#results = find_tweets('lostdog')
 
 #Process Tweets
 for i in results:
-
+    print "**********************************"
     print "Message id: ", i
     #print "Author: ", results[i][0]
     print "Original Author: ",results[i][2]
@@ -83,28 +91,25 @@ for i in results:
     original_tweet_author = results[i][2]
     original_messageid = results[i][3]
     #Check if duplicat of new message
-    if check_duplicate(messageid):
+    if check_duplicate(messageid) or check_duplicate(original_messageid):
         print "It is a duplicate....I am SKIPPING"
         continue
-    #Check if lost dog
-    elif 'lost dog' or 'Lost Dog' or 'lostdog' or 'LostDog' in tweet_message:       
-        print "This is a tweet of a lost dog"
-        print "I am going to retweet this."
-        #check if we have already retweeted this original tweet
-        if check_duplicate(original_messageid):
-            print "We already handled this shit"
-            continue 
-        elif original_tweet_author is None:
-            print "Hey peeps.  Keep a lookout for %s's lost dog" %tweet_author
-            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
-        else:
-            print "Hey peeps.  Keep a lookout for %s's lost dog" %original_tweet_author
-            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
    #Check if retweet
     elif original_tweet_author is not None and original_messageid is not None:
-        print "This is a retweet"
-        update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
+        print "This is a retweet......Processing"
+        if 'lost dog' in tweet_message or 'Lost Dog'in tweet_message or 'lostdog' in tweet_message or 'LostDog' in tweet_message:
+            retweet(original_tweet_author,original_messageid,1)
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
+        else:
+            retweet(original_tweet_author,original_messageid,2)
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
     #Normal Tweet
     else:
-        print "I AM UPDATING THIS SHIT"
-        update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
+        print "This is a normal tweet"
+        #if 'lost dog' or 'Lost Dog' or 'lostdog' or 'LostDog' in tweet_message:
+        if 'lost dog' in tweet_message or 'Lost Dog'in tweet_message or 'lostdog' in tweet_message or 'LostDog' in tweet_message:
+            retweet(tweet_author,messageid,1)
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
+        else:
+            retweet(tweet_author,messageid,2)
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    

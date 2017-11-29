@@ -67,8 +67,8 @@ def retweet(original_tweet_author,originalid,dbmessageid):
     cur.execute("select tweet_message from messages where id = %s" %dbmessageid)
     message = cur.fetchone()[0]
     url = 'https://twitter.com/%s/status/%s' %(original_tweet_author,originalid)
-    print '@%s %s  %s' %(original_tweet_author,message,url)
-    update_status('@%s %s  %s' %(original_tweet_author,message,url))
+    print '%s  %s' %(message,url)
+    update_status('%s  %s' %(message,url))
 def get_max_messageid():
     db_user,db_pass = get_db_creds('/home/pi/twitter_bot/db_creds.txt')
     con = mdb.connect('localhost', db_user,db_pass,'twitterbot')
@@ -161,3 +161,4 @@ for i in results1:
             update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    
         else:
             retweet(tweet_author,messageid,2)
+            update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message)    

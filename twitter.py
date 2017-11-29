@@ -18,7 +18,7 @@ def connect_to_db():
     db_user,db_pass = get_db_creds('/home/pi/twitter_bot/db_creds.txt')
     con = mdb.connect('localhost', db_user,db_pass,'twitterbot',use_unicode=True, charset="utf8mb4")
     cur = con.cursor()
-    return cur
+    return con,cur
 def get_twitter_creds(creds):
     creds = get_creds('/home/pi/twitter_bot/twitter_creds.txt')
     auth = tweepy.OAuthHandler(creds['consumer_key:'], creds['consumer_secret:'])
@@ -30,7 +30,7 @@ def get_db_creds(creds):
     password = creds['db_password:']
     return  user,password
 def update_database(messageid,tweet_author,original_tweet_author,original_messageid,tweet_message):
-    cur = connect_to_db()
+    con,cur = connect_to_db()
     query = "insert into tweets (messageid,tweet_author,original_tweet_author,original_messageid,tweet_message) VALUES (%s,%s,%s,%s,%s)"
     query1 = "insert into tweets (messageid,tweet_author,tweet_message) VALUES (%s,%s,%s)"
     if original_messageid and  original_tweet_author:
@@ -39,6 +39,7 @@ def update_database(messageid,tweet_author,original_tweet_author,original_messag
     else:
         params = (int(messageid),str(tweet_author),tweet_message.encode('utf-8'))
         cur.execute(query1,params)
+    con.commit()
 def find_tweets(searchterm,count,min_id):
     results={}
     search_results = api.search(searchterm,count = count,since_id = min_id)
@@ -53,7 +54,7 @@ def update_status(status):
 def check_duplicate(messageid):
     if messageid is None:
         return False
-    cur = connect_to_db()
+    con,cur = connect_to_db()
     cur.execute("select * from tweets where messageid = %s or original_messageid = %s" %(messageid,messageid))
     results = cur.fetchone()
     if results:
@@ -61,14 +62,14 @@ def check_duplicate(messageid):
     else:
         return False
 def retweet(original_tweet_author,originalid,dbmessageid):
-    cur = connect_to_db()
+    con,cur = connect_to_db()
     cur.execute("select tweet_message from messages where id = %s" %dbmessageid)
     message = cur.fetchone()[0]
     url = 'https://twitter.com/%s/status/%s' %(original_tweet_author,originalid)
     print '%s  %s' %(message,url)
     update_status('%s  %s' %(message,url))
 def get_max_messageid():
-    cur = connect_to_db()
+    con,cur = connect_to_db()
     cur.execute("select max(messageid) from tweets")
     results = cur.fetchone()[0]
     return results
